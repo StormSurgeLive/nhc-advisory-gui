@@ -65,10 +65,11 @@ sub new {
     
     $self->{sizer_3}->Add(20, 20, 0, 0, 0);
     
-    $self->{sizer_3}->Add(0, 0, 0, 0, 0);
-    
     $self->{button_2} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Test JSON");
     $self->{sizer_3}->Add($self->{button_2}, 0, 0, 0);
+    
+    $self->{button_3} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Current JSON");
+    $self->{sizer_3}->Add($self->{button_3}, 0, 0, 0);
     
     $self->{sizer_3}->Add(0, 0, 0, 0, 0);
     
@@ -86,6 +87,7 @@ sub new {
     $self->Layout();
     Wx::Event::EVT_BUTTON($self, $self->{button_1}->GetId, $self->can('update_JSON'));
     Wx::Event::EVT_BUTTON($self, $self->{button_2}->GetId, $self->can('get_test_NHC_JSON'));
+    Wx::Event::EVT_BUTTON($self, $self->{button_3}->GetId, $self->can('get_current_NHC_JSON'));
 
     # end wxGlade
     return $self;
@@ -115,6 +117,22 @@ sub get_test_NHC_JSON {
   $self->{tree_ctrl_1}->SetMinSize(Wx::Size->new(680, 496));
 
   my $sampleURL = "https://www.nhc.noaa.gov/productexamples/NHC_JSON_Sample.json";
+  $self->{text_ctrl_1}->SetValue($sampleURL);
+  my $content = HTTP::Tiny->new->get($sampleURL);
+  my $data = JSON::PP::decode_json($content->{content});
+
+  return $self->_JSON_to_tree($data, $@);
+}
+
+sub get_current_NHC_JSON {
+  my ($self, $event) = @_;
+  # wxGlade: MyFrame::get_current_NHC_JSON <event_handler>
+  # end wxGlade
+
+  # reset tree
+  $self->{tree_ctrl_1}->SetMinSize(Wx::Size->new(680, 496));
+
+  my $sampleURL = "https://www.nhc.noaa.gov/CurrentStorms.json";
   $self->{text_ctrl_1}->SetValue($sampleURL);
   my $content = HTTP::Tiny->new->get($sampleURL);
   my $data = JSON::PP::decode_json($content->{content});
@@ -159,6 +177,7 @@ sub _JSON_to_tree {
 
   return;
 }
+
 
 # end of class MyFrame
 
