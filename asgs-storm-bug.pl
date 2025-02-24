@@ -8,6 +8,7 @@
 use v5.10;
 use strict;
 use Wx;
+use threads;
 use JSON::PP;
 use Util::H2O::More qw/ddd h2o/;
 use HTTP::Tiny;
@@ -38,8 +39,22 @@ sub new {
         unless defined $style;
 
     $self = $self->SUPER::new( $parent, $id, $title, $pos, $size, $style, $name );
-    $self->SetSize(Wx::Size->new(793, 586));
+    $self->SetSize(Wx::Size->new(963, 586));
     $self->SetTitle("ADCIRC Live Storm Tracker");
+    
+    
+
+    # Menu Bar
+
+    $self->{frame_menubar} = Wx::MenuBar->new();
+    my $wxglade_tmp_menu;
+    $wxglade_tmp_menu = Wx::Menu->new();
+    $wxglade_tmp_menu->Append(wxID_ANY, "Quit", "");
+    $self->{frame_menubar}->Append($wxglade_tmp_menu, "File");
+    $self->SetMenuBar($self->{frame_menubar});
+    
+    # Menu Bar end
+
     
     $self->{panel_1} = Wx::Panel->new($self, wxID_ANY);
     
@@ -54,27 +69,33 @@ sub new {
     $self->{sizer_2} = Wx::FlexGridSizer->new(2, 2, 0, 0);
     
     $self->{button_1} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Update");
-    $self->{sizer_2}->Add($self->{button_1}, 0, 0, 0);
+    $self->{sizer_2}->Add($self->{button_1}, 0, wxEXPAND, 0);
+    
+    $self->{sizer_4} = Wx::BoxSizer->new(wxHORIZONTAL);
+    $self->{sizer_2}->Add($self->{sizer_4}, 1, wxEXPAND, 0);
     
     $self->{text_ctrl_1} = Wx::TextCtrl->new($self->{notebook_1_pane_1}, wxID_ANY, "https://raw.githubusercontent.com/StormSurgeLive/storm-archive/refs/heads/master/2024/advisories/al162024/009.CurrentStorms.json");
-    $self->{text_ctrl_1}->SetMinSize(Wx::Size->new(680, 23));
-    $self->{sizer_2}->Add($self->{text_ctrl_1}, 0, 0, 0);
+    $self->{text_ctrl_1}->SetMinSize(Wx::Size->new(800, 23));
+    $self->{sizer_4}->Add($self->{text_ctrl_1}, 0, 0, 0);
+    
+    $self->{button_4} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "reset");
+    $self->{sizer_4}->Add($self->{button_4}, 0, 0, 0);
     
     $self->{sizer_3} = Wx::BoxSizer->new(wxVERTICAL);
     $self->{sizer_2}->Add($self->{sizer_3}, 1, wxEXPAND, 0);
     
-    $self->{sizer_3}->Add(20, 20, 0, 0, 0);
+    $self->{sizer_3}->Add(0, 0, 0, 0, 0);
     
     $self->{button_2} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Test JSON");
-    $self->{sizer_3}->Add($self->{button_2}, 0, 0, 0);
+    $self->{sizer_3}->Add($self->{button_2}, 0, wxEXPAND, 0);
     
     $self->{button_3} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Current JSON");
-    $self->{sizer_3}->Add($self->{button_3}, 0, 0, 0);
+    $self->{sizer_3}->Add($self->{button_3}, 0, wxEXPAND, 0);
     
     $self->{sizer_3}->Add(0, 0, 0, 0, 0);
     
     $self->{tree_ctrl_1} = Wx::TreeCtrl->new($self->{notebook_1_pane_1}, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_SUNKEN|wxTR_HAS_BUTTONS|wxTR_NO_BUTTONS|wxTR_SINGLE);
-    $self->{tree_ctrl_1}->SetMinSize(Wx::Size->new(680, 496));
+    $self->{tree_ctrl_1}->SetMinSize(Wx::Size->new(800, 496));
     $self->{sizer_2}->Add($self->{tree_ctrl_1}, 1, wxEXPAND, 0);
     
     $self->{notebook_1_ASGSStormArchive} = Wx::Panel->new($self->{notebook_1}, wxID_ANY);
@@ -85,7 +106,9 @@ sub new {
     $self->{panel_1}->SetSizer($self->{sizer_1});
     
     $self->Layout();
+    Wx::Event::EVT_MENU($self, wxID_ANY, $self->can('DoQuit'));
     Wx::Event::EVT_BUTTON($self, $self->{button_1}->GetId, $self->can('update_JSON'));
+    Wx::Event::EVT_BUTTON($self, $self->{button_4}->GetId, $self->can('resetURL'));
     Wx::Event::EVT_BUTTON($self, $self->{button_2}->GetId, $self->can('get_test_NHC_JSON'));
     Wx::Event::EVT_BUTTON($self, $self->{button_3}->GetId, $self->can('get_current_NHC_JSON'));
 
@@ -99,7 +122,7 @@ sub update_JSON {
   # end wxGlade
 
   # reset tree
-  $self->{tree_ctrl_1}->SetMinSize(Wx::Size->new(680, 496));
+  $self->{tree_ctrl_1}->DeleteAllItems;
 
   my $URL = $self->{text_ctrl_1}->GetValue;
   my $content = HTTP::Tiny->new->get($URL);
@@ -114,7 +137,7 @@ sub get_test_NHC_JSON {
   # end wxGlade
 
   # reset tree
-  $self->{tree_ctrl_1}->SetMinSize(Wx::Size->new(680, 496));
+  $self->{tree_ctrl_1}->DeleteAllItems;
 
   my $sampleURL = "https://www.nhc.noaa.gov/productexamples/NHC_JSON_Sample.json";
   $self->{text_ctrl_1}->SetValue($sampleURL);
@@ -130,7 +153,7 @@ sub get_current_NHC_JSON {
   # end wxGlade
 
   # reset tree
-  $self->{tree_ctrl_1}->SetMinSize(Wx::Size->new(680, 496));
+  $self->{tree_ctrl_1}->DeleteAllItems;
 
   my $sampleURL = "https://www.nhc.noaa.gov/CurrentStorms.json";
   $self->{text_ctrl_1}->SetValue($sampleURL);
@@ -138,6 +161,22 @@ sub get_current_NHC_JSON {
   my $data = JSON::PP::decode_json($content->{content});
 
   return $self->_JSON_to_tree($data, $@);
+}
+
+# Event handler when an item is clicked
+my $URLS = {};
+
+sub on_item_activated {
+    my ($self, $event) = @_;
+    my $tree = $event->GetEventObject();
+    my $item = $event->GetItem();
+    
+    # Get the stored URL from item data
+    my $url = $URLS->{$$item};
+    # Open the URL (could use a web browser or simply print the URL for now)
+    if ($url) {
+      say $url;
+    }
 }
 
 sub _JSON_to_tree {
@@ -151,6 +190,7 @@ sub _JSON_to_tree {
   foreach my $storm (@{$data->{activeStorms}}) {
     # Add each storm as a branch under the root
     my $storm_tree = $tree->AppendItem($root, "$storm->{name} ($storm->{id})");
+    Wx::Event::EVT_TREE_ITEM_ACTIVATED($self, $storm_tree, \&on_item_activated);
 
     # Iterate through all keys in the storm object
     foreach my $key (keys %$storm) {
@@ -161,7 +201,10 @@ sub _JSON_to_tree {
         my $sub_tree = $tree->AppendItem($storm_tree, "$key");
         # For each nested field, append them as items
         foreach my $sub_key (keys %$value) {
-          $tree->AppendItem($sub_tree, "$sub_key: $value->{$sub_key}");
+          my $item = $tree->AppendItem($sub_tree, "$sub_key: $value->{$sub_key}");
+          if ($value->{$sub_key} =~ m/^http/) {
+            $URLS->{$$item} = $value->{$sub_key};
+          }
         }
       }
       # If it's a simple value, just append it as is
@@ -175,9 +218,26 @@ sub _JSON_to_tree {
     }
   }
 
+  $tree->Expand($root);
+
   return;
 }
 
+sub DoQuit {
+    my ($self, $event) = @_;
+    # wxGlade: MyFrame::DoQuit <event_handler>
+    # end wxGlade
+    $self->Close;
+}
+
+
+sub resetURL {
+    my ($self, $event) = @_;
+    # wxGlade: MyFrame::resetURL <event_handler>
+    # end wxGlade
+    $self->{text_ctrl_1}->SetValue("https://raw.githubusercontent.com/StormSurgeLive/storm-archive/refs/heads/master/2024/advisories/al162024/009.CurrentStorms.json");
+    return $self->update_JSON(@_);
+}
 
 # end of class MyFrame
 
