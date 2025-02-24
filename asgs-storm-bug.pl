@@ -38,7 +38,7 @@ sub new {
         unless defined $style;
 
     $self = $self->SUPER::new( $parent, $id, $title, $pos, $size, $style, $name );
-    $self->SetSize(Wx::Size->new(592, 586));
+    $self->SetSize(Wx::Size->new(793, 586));
     $self->SetTitle("ADCIRC Live Storm Tracker");
     
     $self->{panel_1} = Wx::Panel->new($self, wxID_ANY);
@@ -51,15 +51,21 @@ sub new {
     $self->{notebook_1_pane_1} = Wx::Panel->new($self->{notebook_1}, wxID_ANY);
     $self->{notebook_1}->AddPage($self->{notebook_1_pane_1}, "NHC Monitor");
     
-    $self->{sizer_2} = Wx::FlexGridSizer->new(1, 2, 0, 0);
+    $self->{sizer_2} = Wx::FlexGridSizer->new(2, 2, 0, 0);
+    
+    $self->{button_1} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Update");
+    $self->{sizer_2}->Add($self->{button_1}, 0, 0, 0);
+    
+    $self->{text_ctrl_1} = Wx::TextCtrl->new($self->{notebook_1_pane_1}, wxID_ANY, "https://raw.githubusercontent.com/StormSurgeLive/storm-archive/refs/heads/master/2024/advisories/al162024/009.CurrentStorms.json");
+    $self->{text_ctrl_1}->SetMinSize(Wx::Size->new(680, 23));
+    $self->{sizer_2}->Add($self->{text_ctrl_1}, 0, 0, 0);
     
     $self->{sizer_3} = Wx::BoxSizer->new(wxVERTICAL);
     $self->{sizer_2}->Add($self->{sizer_3}, 1, wxEXPAND, 0);
     
     $self->{sizer_3}->Add(20, 20, 0, 0, 0);
     
-    $self->{button_1} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Update");
-    $self->{sizer_3}->Add($self->{button_1}, 0, 0, 0);
+    $self->{sizer_3}->Add(0, 0, 0, 0, 0);
     
     $self->{button_2} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Test JSON");
     $self->{sizer_3}->Add($self->{button_2}, 0, 0, 0);
@@ -67,7 +73,7 @@ sub new {
     $self->{sizer_3}->Add(0, 0, 0, 0, 0);
     
     $self->{tree_ctrl_1} = Wx::TreeCtrl->new($self->{notebook_1_pane_1}, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_SUNKEN|wxTR_HAS_BUTTONS|wxTR_NO_BUTTONS|wxTR_SINGLE);
-    $self->{tree_ctrl_1}->SetMinSize(Wx::Size->new(480, 496));
+    $self->{tree_ctrl_1}->SetMinSize(Wx::Size->new(680, 496));
     $self->{sizer_2}->Add($self->{tree_ctrl_1}, 1, wxEXPAND, 0);
     
     $self->{notebook_1_ASGSStormArchive} = Wx::Panel->new($self->{notebook_1}, wxID_ANY);
@@ -78,38 +84,79 @@ sub new {
     $self->{panel_1}->SetSizer($self->{sizer_1});
     
     $self->Layout();
+    Wx::Event::EVT_BUTTON($self, $self->{button_1}->GetId, $self->can('update_JSON'));
     Wx::Event::EVT_BUTTON($self, $self->{button_2}->GetId, $self->can('get_test_NHC_JSON'));
 
     # end wxGlade
     return $self;
 
 }
+sub update_JSON {
+  my ($self, $event) = @_;
+  # wxGlade: MyFrame::update_JSON <event_handler>
+  # end wxGlade
 
+  # reset tree
+  $self->{tree_ctrl_1}->SetMinSize(Wx::Size->new(680, 496));
+
+  my $URL = $self->{text_ctrl_1}->GetValue;
+  my $content = HTTP::Tiny->new->get($URL);
+  my $data = JSON::PP::decode_json($content->{content});
+
+  return $self->_JSON_to_tree($data, $@);
+}
 
 sub get_test_NHC_JSON {
   my ($self, $event) = @_;
   # wxGlade: MyFrame::get_test_NHC_JSON <event_handler>
   # end wxGlade
+
+  # reset tree
+  $self->{tree_ctrl_1}->SetMinSize(Wx::Size->new(680, 496));
+
   my $sampleURL = "https://www.nhc.noaa.gov/productexamples/NHC_JSON_Sample.json";
+  $self->{text_ctrl_1}->SetValue($sampleURL);
   my $content = HTTP::Tiny->new->get($sampleURL);
   my $data = JSON::PP::decode_json($content->{content});
 
-#-- once done, move over to its own function so it can handle
-#-- real season updates (e.g., test using JSON archived in ASGS Storm Archive ...)
+  return $self->_JSON_to_tree($data, $@);
+}
+
+sub _JSON_to_tree {
+  my ($self, $data, $event) = @_;
+  # Get the tree control object
   my $tree = $self->{tree_ctrl_1};
-  my $root = $tree->AddRoot('Active Storms');
+  my $numStorms = @{$data->{activeStorms}} || 0;
+  my $root = $tree->AddRoot("Active Storms ($numStorms)");
+
+  # Loop through each storm in the activeStorms array
   foreach my $storm (@{$data->{activeStorms}}) {
+    # Add each storm as a branch under the root
     my $storm_tree = $tree->AppendItem($root, "$storm->{name} ($storm->{id})");
-    $tree->AppendItem($storm_tree, "Bin Number: $storm->{binNumber}");
-    $tree->AppendItem($storm_tree, "Classification: $storm->{classification}");
-    $tree->AppendItem($storm_tree, "Intensity: $storm->{intensity}");
-    $tree->AppendItem($storm_tree, "Pressure: $storm->{pressure}");
-    $tree->AppendItem($storm_tree, "Latitude: $storm->{latitude}");
-    $tree->AppendItem($storm_tree, "Longitude: $storm->{longitude}");
-    $tree->AppendItem($storm_tree, "Movement Direction: $storm->{movementDir}");
-    $tree->AppendItem($storm_tree, "Movement Speed: $storm->{movementSpeed}");
-    $tree->AppendItem($storm_tree, "Last Update: $storm->{lastUpdate}");
+
+    # Iterate through all keys in the storm object
+    foreach my $key (keys %$storm) {
+      my $value = $storm->{$key};
+
+      # Check if the field is a complex object (nested structure)
+      if (ref $value eq 'HASH') {
+        my $sub_tree = $tree->AppendItem($storm_tree, "$key");
+        # For each nested field, append them as items
+        foreach my $sub_key (keys %$value) {
+          $tree->AppendItem($sub_tree, "$sub_key: $value->{$sub_key}");
+        }
+      }
+      # If it's a simple value, just append it as is
+      elsif (defined $value) {
+        $tree->AppendItem($storm_tree, "$key: $value");
+      }
+      # If the field is undefined or empty, you may want to skip or add a placeholder
+      else {
+        $tree->AppendItem($storm_tree, "$key: Not Available");
+      }
+    }
   }
+
   return;
 }
 
