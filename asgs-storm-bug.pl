@@ -111,6 +111,8 @@ sub new {
     Wx::Event::EVT_BUTTON($self, $self->{button_4}->GetId, $self->can('resetURL'));
     Wx::Event::EVT_BUTTON($self, $self->{button_2}->GetId, $self->can('get_test_NHC_JSON'));
     Wx::Event::EVT_BUTTON($self, $self->{button_3}->GetId, $self->can('get_current_NHC_JSON'));
+    Wx::Event::EVT_TREE_ITEM_ACTIVATED($self, $self->{tree_ctrl_1}->GetId, $self->can('on_item_activated'));
+    Wx::Event::EVT_CLOSE($self, $self->can('DoQuit'));
 
     # end wxGlade
     return $self;
@@ -169,19 +171,21 @@ sub get_current_NHC_JSON {
   return $self->_async_get_JSON($URL);
 }
 
-# Event handler when an item is clicked
-my $URLS = {};
-
 sub on_item_activated {
     my ($self, $event) = @_;
+
+    # wxGlade: MyFrame::on_item_activated <event_handler>
+    # end wxGlade
+
     my $tree = $event->GetEventObject();
     my $item = $event->GetItem();
-    
+
     # Get the stored URL from item data
-    my $url = $URLS->{$$item};
+    my $url = $tree->GetItemData($item);
+ 
     # Open the URL (could use a web browser or simply print the URL for now)
-    if ($url) {
-      say $url;
+    if (defined $url) {
+      say $url->GetData;
     }
 }
 
@@ -201,7 +205,6 @@ sub _JSON_to_tree {
     # Add each storm as a branch under the root
 
     my $storm_tree = $tree->AppendItem($root, "$storm->{name} ($storm->{id})");
-    Wx::Event::EVT_TREE_ITEM_ACTIVATED($self, $storm_tree, \&on_item_activated);
 
     # Iterate through all keys in the storm object
     foreach my $key (keys %$storm) {
@@ -214,7 +217,8 @@ sub _JSON_to_tree {
         foreach my $sub_key (keys %$value) {
           my $item = $tree->AppendItem($sub_tree, "$sub_key: $value->{$sub_key}");
           if ($value->{$sub_key} =~ m/^http/) {
-            $URLS->{$$item} = $value->{$sub_key};
+            my $url = $value->{$sub_key}; ## store all URLs based on itemid
+            $tree->SetItemData($item, Wx::TreeItemData->new($url)); ## store all URLs based on itemid
           }
         }
       }
@@ -253,6 +257,8 @@ sub resetURL {
     $self->{text_ctrl_1}->SetValue("https://raw.githubusercontent.com/StormSurgeLive/storm-archive/refs/heads/master/2024/advisories/al162024/009.CurrentStorms.json");
     return $self->update_JSON(@_);
 }
+
+
 
 # end of class MyFrame
 
