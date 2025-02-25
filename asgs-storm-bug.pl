@@ -68,7 +68,7 @@ sub new {
     
     $self->{sizer_2} = Wx::FlexGridSizer->new(2, 2, 0, 0);
     
-    $self->{button_1} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Update");
+    $self->{button_1} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Custom");
     $self->{sizer_2}->Add($self->{button_1}, 0, wxEXPAND, 0);
     
     $self->{sizer_4} = Wx::BoxSizer->new(wxHORIZONTAL);
@@ -116,19 +116,35 @@ sub new {
     return $self;
 
 }
+
+sub _async_get_JSON {
+  my ($self) = @_;
+  my $worker = threads->create(
+   sub {
+     $self->{text_ctrl_1}->SetValue($self->{lastURL});
+     my $content = HTTP::Tiny->new->get($self->{lastURL});
+     my $data = JSON::PP::decode_json($content->{content});
+     return $self->_JSON_to_tree($data, $@);
+   }, $self);
+  # treat as FIFO, clean up oldest first
+  push @{$self->{worker_threads}}, $worker;
+  while (scalar @{$self->{worker_threads}} > 5) {
+    say "purging old thread ...";
+    my $old_worker = shift @{$self->{worker_threads}};
+    $old_worker->join;
+  }
+  return;
+}
+
 sub update_JSON {
   my ($self, $event) = @_;
   # wxGlade: MyFrame::update_JSON <event_handler>
   # end wxGlade
 
-  # reset tree
-  $self->{tree_ctrl_1}->DeleteAllItems;
-
   my $URL = $self->{text_ctrl_1}->GetValue;
-  my $content = HTTP::Tiny->new->get($URL);
-  my $data = JSON::PP::decode_json($content->{content});
+  $self->{lastURL} = $URL;
 
-  return $self->_JSON_to_tree($data, $@);
+  return $self->_async_get_JSON($URL);
 }
 
 sub get_test_NHC_JSON {
@@ -136,15 +152,10 @@ sub get_test_NHC_JSON {
   # wxGlade: MyFrame::get_test_NHC_JSON <event_handler>
   # end wxGlade
 
-  # reset tree
-  $self->{tree_ctrl_1}->DeleteAllItems;
+  my $URL = "https://www.nhc.noaa.gov/productexamples/NHC_JSON_Sample.json";
+  $self->{lastURL} = $URL;
 
-  my $sampleURL = "https://www.nhc.noaa.gov/productexamples/NHC_JSON_Sample.json";
-  $self->{text_ctrl_1}->SetValue($sampleURL);
-  my $content = HTTP::Tiny->new->get($sampleURL);
-  my $data = JSON::PP::decode_json($content->{content});
-
-  return $self->_JSON_to_tree($data, $@);
+  return $self->_async_get_JSON($URL);
 }
 
 sub get_current_NHC_JSON {
@@ -152,15 +163,10 @@ sub get_current_NHC_JSON {
   # wxGlade: MyFrame::get_current_NHC_JSON <event_handler>
   # end wxGlade
 
-  # reset tree
-  $self->{tree_ctrl_1}->DeleteAllItems;
+  my $URL = "https://www.nhc.noaa.gov/CurrentStorms.json";
+  $self->{lastURL} = $URL;
 
-  my $sampleURL = "https://www.nhc.noaa.gov/CurrentStorms.json";
-  $self->{text_ctrl_1}->SetValue($sampleURL);
-  my $content = HTTP::Tiny->new->get($sampleURL);
-  my $data = JSON::PP::decode_json($content->{content});
-
-  return $self->_JSON_to_tree($data, $@);
+  return $self->_async_get_JSON($URL);
 }
 
 # Event handler when an item is clicked
@@ -181,6 +187,10 @@ sub on_item_activated {
 
 sub _JSON_to_tree {
   my ($self, $data, $event) = @_;
+
+  # reset tree
+  $self->{tree_ctrl_1}->DeleteAllItems;
+
   # Get the tree control object
   my $tree = $self->{tree_ctrl_1};
   my $numStorms = @{$data->{activeStorms}} || 0;
@@ -189,6 +199,7 @@ sub _JSON_to_tree {
   # Loop through each storm in the activeStorms array
   foreach my $storm (@{$data->{activeStorms}}) {
     # Add each storm as a branch under the root
+
     my $storm_tree = $tree->AppendItem($root, "$storm->{name} ($storm->{id})");
     Wx::Event::EVT_TREE_ITEM_ACTIVATED($self, $storm_tree, \&on_item_activated);
 
@@ -227,6 +238,10 @@ sub DoQuit {
     my ($self, $event) = @_;
     # wxGlade: MyFrame::DoQuit <event_handler>
     # end wxGlade
+    say "purging old threads ...";
+    foreach my $worker (@{$self->{worker_threads}}) {
+      $worker->join();
+    }
     $self->Close;
 }
 
