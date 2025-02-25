@@ -1,2 +1,2 @@
 all:
-	pp ./asgs-storm-bug.pl -o ./dist/nhc-explorer.exe
+	wxpar --verbose -o ./dist/nhc-explorer.exe -M JSON::PP -M HTTP::Tiny ./asgs-storm-bug.pl
