@@ -133,6 +133,7 @@ sub _async_get_JSON {
      if (not $data or $@) {
        say "WARN: an error occurred processing JSON response.";
        say $@ if $@;
+       return;
      }
      $self->_JSON_to_tree($data);
   # }, $self);
