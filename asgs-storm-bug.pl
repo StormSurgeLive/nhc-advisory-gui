@@ -128,7 +128,12 @@ sub _async_get_JSON {
   # sub {
   # $self->{text_ctrl_1}->SetValue($self->{lastURL});
      my $content = HTTP::Tiny->new->get($self->{lastURL});
-     my $data = JSON::PP::decode_json($content->{content});
+     local $@;
+     my $data = eval { JSON::PP::decode_json($content->{content}) } or undef;
+     if (not $data or $@) {
+       say "WARN: an error occurred processing JSON response.";
+       say $@ if $@;
+     }
      $self->_JSON_to_tree($data);
   # }, $self);
   #$worker->detach;
