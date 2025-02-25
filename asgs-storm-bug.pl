@@ -7,10 +7,10 @@
 
 use v5.10;
 use strict;
+use Wx::Perl::Packager;
 use Wx;
-use threads;
+#use threads;
 use JSON::PP;
-use Util::H2O::More qw/ddd h2o/;
 use HTTP::Tiny;
 
 # begin wxGlade: dependencies
