@@ -6,7 +6,7 @@ This is a work in progress.
 
 # Example (PROTOTYPE)
 
-![image](https://github.com/user-attachments/assets/74850e08-7763-4234-a896-9c8db5a8af0c)
+![image](https://github.com/user-attachments/assets/064b6074-456a-4490-90f7-9f9c795ce008)
 
 # Contributions
 
