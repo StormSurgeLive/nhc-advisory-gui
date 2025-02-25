@@ -112,7 +112,6 @@ sub new {
     Wx::Event::EVT_BUTTON($self, $self->{button_2}->GetId, $self->can('get_test_NHC_JSON'));
     Wx::Event::EVT_BUTTON($self, $self->{button_3}->GetId, $self->can('get_current_NHC_JSON'));
     Wx::Event::EVT_TREE_ITEM_ACTIVATED($self, $self->{tree_ctrl_1}->GetId, $self->can('on_item_activated'));
-    Wx::Event::EVT_CLOSE($self, $self->can('DoQuit'));
 
     # end wxGlade
     return $self;
@@ -121,20 +120,21 @@ sub new {
 
 sub _async_get_JSON {
   my ($self) = @_;
-  my $worker = threads->create(
-   sub {
-     $self->{text_ctrl_1}->SetValue($self->{lastURL});
+  #my $worker = threads->create(
+  # sub {
+  # $self->{text_ctrl_1}->SetValue($self->{lastURL});
      my $content = HTTP::Tiny->new->get($self->{lastURL});
      my $data = JSON::PP::decode_json($content->{content});
-     return $self->_JSON_to_tree($data, $@);
-   }, $self);
+     $self->_JSON_to_tree($data);
+  # }, $self);
+  #$worker->detach;
   # treat as FIFO, clean up oldest first
-  push @{$self->{worker_threads}}, $worker;
-  while (scalar @{$self->{worker_threads}} > 5) {
-    say "purging old thread ...";
-    my $old_worker = shift @{$self->{worker_threads}};
-    $old_worker->join;
-  }
+  #push @{$self->{worker_threads}}, $worker;
+  #while (scalar @{$self->{worker_threads}} > 5) {
+  #  say "purging old thread ...";
+  #  my $old_worker = shift @{$self->{worker_threads}};
+  #  $old_worker->join;
+  #}
   return;
 }
 
@@ -190,7 +190,7 @@ sub on_item_activated {
 }
 
 sub _JSON_to_tree {
-  my ($self, $data, $event) = @_;
+  my ($self, $data) = @_;
 
   # reset tree
   $self->{tree_ctrl_1}->DeleteAllItems;
@@ -209,7 +209,6 @@ sub _JSON_to_tree {
     # Iterate through all keys in the storm object
     foreach my $key (keys %$storm) {
       my $value = $storm->{$key};
-
       # Check if the field is a complex object (nested structure)
       if (ref $value eq 'HASH') {
         my $sub_tree = $tree->AppendItem($storm_tree, "$key");
@@ -242,13 +241,12 @@ sub DoQuit {
     my ($self, $event) = @_;
     # wxGlade: MyFrame::DoQuit <event_handler>
     # end wxGlade
-    say "purging old threads ...";
-    foreach my $worker (@{$self->{worker_threads}}) {
-      $worker->join();
-    }
+    #say "purging old threads ...";
+    #while (my $worker = pop @{$self->{worker_threads}}) {
+    #  $worker->join();
+    #}
     $self->Close;
 }
-
 
 sub resetURL {
     my ($self, $event) = @_;
@@ -257,8 +255,6 @@ sub resetURL {
     $self->{text_ctrl_1}->SetValue("https://raw.githubusercontent.com/StormSurgeLive/storm-archive/refs/heads/master/2024/advisories/al162024/009.CurrentStorms.json");
     return $self->update_JSON(@_);
 }
-
-
 
 # end of class MyFrame
 
