@@ -10,6 +10,8 @@ This is a work in progress.
 
 ![image](https://github.com/user-attachments/assets/a2f159d5-ebd8-4888-8d59-1ad2008b70fd)
 
+_(double click a tree item with a URL will copy the URL to the clipboard for easy pasting, e.g., in a browser window)_
+
 ![image](https://github.com/user-attachments/assets/0597fd67-04e0-4c1a-8460-24abc475adec)
 
 # Contributions
