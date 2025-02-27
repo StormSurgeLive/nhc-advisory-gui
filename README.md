@@ -4,7 +4,7 @@ A project for exploring NHC's storm JSON archives and current storm.
 
 This is a work in progress.
 
-# Example (PROTOTYPE)
+# Example (Proof of Comcept)
 
 ![image](https://github.com/user-attachments/assets/2efa345e-ad73-4e98-b9b9-54d8478d68a4)
 _(`Test JSON` fetches and creates a Wx::TreeCtrl from the NHC "[sample](https://www.nhc.noaa.gov/productexamples/NHC_JSON_Sample.json)" JSON returned)_
