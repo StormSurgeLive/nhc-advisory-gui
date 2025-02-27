@@ -6,7 +6,11 @@ This is a work in progress.
 
 # Example (PROTOTYPE)
 
-![image](https://github.com/user-attachments/assets/064b6074-456a-4490-90f7-9f9c795ce008)
+![image](https://github.com/user-attachments/assets/2efa345e-ad73-4e98-b9b9-54d8478d68a4)
+
+![image](https://github.com/user-attachments/assets/a2f159d5-ebd8-4888-8d59-1ad2008b70fd)
+
+![image](https://github.com/user-attachments/assets/0597fd67-04e0-4c1a-8460-24abc475adec)
 
 # Contributions
 
