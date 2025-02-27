@@ -17,7 +17,9 @@ _(double click a tree item with a URL will copy the URL to the clipboard for eas
 
 # Windows WARNING Expected
 
-Click through this to test,
+Click _More info_, then _Run anyway_, to test the EXEs.
+
+**The EXEs are just `.zip` files, so you can unzip them to inspected if you wanted.**
 
 ![image](https://github.com/user-attachments/assets/d5f6e0e8-d81d-49c0-aa69-361e41fe109e)
 
