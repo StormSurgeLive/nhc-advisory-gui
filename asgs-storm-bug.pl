@@ -8,7 +8,8 @@
 use v5.10;
 use strict;
 use Wx::Perl::Packager;
-use Wx;
+use Wx qw/wxTheClipboard/;
+use Wx::DND;
 #use threads;
 use JSON::PP;
 use HTTP::Tiny;
@@ -195,8 +196,35 @@ sub on_item_activated {
  
     # Open the URL (could use a web browser or simply print the URL for now)
     if (defined $url) {
-      say $url->GetData;
+      my $url_text = $url->GetData;
+      $self->_copy_text_to_clipboard($url_text);
     }
+}
+
+sub _copy_text_to_clipboard {
+    my ($self, $text_to_copy) = @_;
+
+    # Get the clipboard object
+    # Open the clipboard
+    if (wxTheClipboard->Open) {
+        # Set the wxTheClipboard data (you must wrap the text in a Wx::TextDataObject)
+        my $text_data = Wx::TextDataObject->new($text_to_copy);
+
+        # Clear the wxTheClipboard and set the new data
+        wxTheClipboard->Clear;
+        wxTheClipboard->SetData($text_data);
+
+        # Close the wxTheClipboard
+        wxTheClipboard->Close;
+
+	say "Copied '$text_to_copy' to clipboard.";
+        # Optionally, show a message box confirming the action
+        Wx::MessageBox("URL copied to clipboard!", "Success", wxOK | wxICON_INFORMATION, $self);
+    }
+    else {
+        Wx::MessageBox("Failed to open clipboard!", "Error", wxOK | wxICON_ERROR, $self);
+    }
+    return;
 }
 
 sub _JSON_to_tree {

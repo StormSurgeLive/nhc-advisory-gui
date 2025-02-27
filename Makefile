@@ -1,10 +1,7 @@
-all: dist debug
-
-dist:
+all:
 	wxpar --verbose -o ./dist/nhc-explorer.exe -l c:/strawberry/c/bin/libcrypto-3-x64__.dll -l c:/strawberry/c/bin/zlib1__.dll -l c:/strawberry/c/bin/libssl-3-x64__.dll ./asgs-storm-bug.pl --gui
-
-debug:
 	wxpar --verbose -o ./dist/DEBUG-nhc-explorer.exe -l c:/strawberry/c/bin/libcrypto-3-x64__.dll -l c:/strawberry/c/bin/zlib1__.dll -l c:/strawberry/c/bin/libssl-3-x64__.dll ./asgs-storm-bug.pl 
+
 
 # Note: good example of a the command required to package an EXE for Windows
 # when using HTTP::Tiny and https addresses
