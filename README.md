@@ -15,6 +15,12 @@ _(exanding tree for an "active" storm reveals he hierarchy of [information avail
 ![image](https://github.com/user-attachments/assets/0597fd67-04e0-4c1a-8460-24abc475adec)
 _(double click a tree item with a URL will copy the URL to the clipboard for easy pasting, e.g., in a browser window)_
 
+# Windows WARNING Expected
+
+Click through this to test,
+
+![image](https://github.com/user-attachments/assets/d5f6e0e8-d81d-49c0-aa69-361e41fe109e)
+
 # Contributions
 
 This project is not yet open for code contributors, the GUI layout and
