@@ -1,6 +1,6 @@
 all:
-	wxpar --verbose -o ./dist/nhc-explorer.exe -l c:/strawberry/c/bin/libcrypto-3-x64__.dll -l c:/strawberry/c/bin/zlib1__.dll -l c:/strawberry/c/bin/libssl-3-x64__.dll ./asgs-storm-bug.pl --gui
-	wxpar --verbose -o ./dist/DEBUG-nhc-explorer.exe -l c:/strawberry/c/bin/libcrypto-3-x64__.dll -l c:/strawberry/c/bin/zlib1__.dll -l c:/strawberry/c/bin/libssl-3-x64__.dll ./asgs-storm-bug.pl 
+	wxpar --verbose -o ./dist/nhc-explorer.exe -l c:/strawberry/c/bin/libcrypto-3-x64__.dll -l c:/strawberry/c/bin/zlib1__.dll -l c:/strawberry/c/bin/libssl-3-x64__.dll ./nhc-explorer.pl --gui
+	wxpar --verbose -o ./dist/DEBUG-nhc-explorer.exe -l c:/strawberry/c/bin/libcrypto-3-x64__.dll -l c:/strawberry/c/bin/zlib1__.dll -l c:/strawberry/c/bin/libssl-3-x64__.dll ./nhc-explorer.pl 
 
 
 # Note: good example of a the command required to package an EXE for Windows
