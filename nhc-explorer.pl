@@ -7,12 +7,13 @@
 
 use v5.10;
 use strict;
-use Wx::Perl::Packager;
+#use Wx::Perl::Packager;
 use Wx qw/wxTheClipboard/;
 use Wx::DND;
 #use threads;
 use JSON::PP;
 use HTTP::Tiny;
+use PDL::NetCDF;
 
 # begin wxGlade: dependencies
 # end wxGlade
