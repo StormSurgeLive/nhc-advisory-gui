@@ -167,6 +167,7 @@ sub get_test_NHC_JSON {
   # end wxGlade
 
   my $URL = "https://www.nhc.noaa.gov/productexamples/NHC_JSON_Sample.json";
+  $self->{text_ctrl_1}->SetValue($URL);
   $self->{lastURL} = $URL;
 
   return $self->_async_get_JSON($URL);
@@ -178,6 +179,7 @@ sub get_current_NHC_JSON {
   # end wxGlade
 
   my $URL = "https://www.nhc.noaa.gov/CurrentStorms.json";
+  $self->{text_ctrl_1}->SetValue($URL);
   $self->{lastURL} = $URL;
 
   return $self->_async_get_JSON($URL);

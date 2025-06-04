@@ -16,9 +16,8 @@ all:
 # 3. ran the "wxpar" command above
 # 4. tested in a non-Strawberry Perl window (MSYS2 terminal) using the command,
 #
-#      PERL_DL_DEBUG=5 dist/nhc-explorer.exe
+#    PERL_DL_DEBUG=5 dist/nhc-explorer.exe
 #
-#    I learned about this command while searching, here:
+# I learned about this command while searching, here:
 #
-#      https://stackoverflow.com/questions/423330/why-cant-dynaloader-pm-load-ssleay-dll-for-netssleay-and-cryptssleay
-#      (per, "rurban")
+#   https://stackoverflow.com/questions/423330/why-cant-dynaloader-pm-load-ssleay-dll-for-netssleay-and-cryptssleay  #(per, "rurban")
