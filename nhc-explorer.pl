@@ -7,13 +7,46 @@
 
 use v5.10;
 use strict;
-#use Wx::Perl::Packager;
+use threads;
 use Wx qw/wxTheClipboard/;
 use Wx::DND;
-#use threads;
 use JSON::PP;
 use HTTP::Tiny;
 use PDL::NetCDF;
+use Util::H2O::More qw/ddd HTTPTiny2h2o/;
+
+# info for presenting the URLs for the current form of the storm archive
+# TODO:
+# Clicking "Explore Archive" should
+# for each year, build a collapsable hierachy of .json files to load,
+#
+# YEAR
+#   BASIN
+#     STORM
+#       ADVISORY
+#         JSON URL (double click will offer a 'fetch?' dialog, on "yes" will update
+#                    URL address bar and load the selected JSON
+#
+# Notes:
+#   1. going back to "Explore Archive" should preserve the state of the tree (prevent
+#      repeated drilling down)
+#
+#   2. the archive doesn't change that frequently, so cache the tree; offer a way to
+#      "refresh archive listing"
+#
+#   3. initially just support years 2021+, but once initial pass is done look at adding
+#      the other directories (as a "precaching)
+#
+#   4. other ideas to be open to: ability to generate input files (e.g., fort.22) or do
+#      things like visually modify the track, then run a Perl version of aswip to create
+#      the needed files
+#
+my $BASEURL = "https://api.github.com/repos/StormSurgeLive/storm-archive/contents";
+my $VALID_YEARS = [qw/2021 2022 2023 2024 2025/];
+
+my $archiveListing = Util::H2O::More::HTTPTiny2h2o(HTTP::Tiny->new->get("$BASEURL/2021"));
+
+#ddd $archiveListing;
 
 # begin wxGlade: dependencies
 # end wxGlade
@@ -37,12 +70,12 @@ sub new {
     $name   = ""                 unless defined $name;
 
     # begin wxGlade: MyFrame::new
-    $style = wxDEFAULT_FRAME_STYLE
+    $style = wxCAPTION|wxCLIP_CHILDREN|wxCLOSE_BOX|wxMAXIMIZE_BOX|wxMINIMIZE_BOX|wxSYSTEM_MENU
         unless defined $style;
 
     $self = $self->SUPER::new( $parent, $id, $title, $pos, $size, $style, $name );
-    $self->SetSize(Wx::Size->new(963, 586));
-    $self->SetTitle("ADCIRC Live Storm Tracker");
+    $self->SetSize(Wx::Size->new(1008, 596));
+    $self->SetTitle("NHC Explorer - (C) ADCIRC Live - https://www.adcirc.live");
     
     
 
@@ -74,8 +107,8 @@ sub new {
     
     $self->{sizer_2} = Wx::FlexGridSizer->new(2, 2, 0, 0);
     
-    $self->{button_1} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Custom");
-    $self->{sizer_2}->Add($self->{button_1}, 0, wxEXPAND, 0);
+    $self->{button_4} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Home");
+    $self->{sizer_2}->Add($self->{button_4}, 0, wxEXPAND, 0);
     
     $self->{sizer_4} = Wx::BoxSizer->new(wxHORIZONTAL);
     $self->{sizer_2}->Add($self->{sizer_4}, 1, wxEXPAND, 0);
@@ -84,28 +117,29 @@ sub new {
     $self->{text_ctrl_1}->SetMinSize(Wx::Size->new(800, 23));
     $self->{sizer_4}->Add($self->{text_ctrl_1}, 0, 0, 0);
     
-    $self->{button_4} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "reset");
-    $self->{sizer_4}->Add($self->{button_4}, 0, 0, 0);
+    $self->{sizer_4}->Add(0, 0, 0, 0, 0);
+    
+    $self->{button_1} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Go");
+    $self->{sizer_4}->Add($self->{button_1}, 0, wxEXPAND, 0);
     
     $self->{sizer_3} = Wx::BoxSizer->new(wxVERTICAL);
     $self->{sizer_2}->Add($self->{sizer_3}, 1, wxEXPAND, 0);
     
-    $self->{sizer_3}->Add(0, 0, 0, 0, 0);
-    
-    $self->{button_2} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Test JSON");
-    $self->{sizer_3}->Add($self->{button_2}, 0, wxEXPAND, 0);
-    
-    $self->{button_3} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Current JSON");
+    $self->{button_3} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Load Active");
     $self->{sizer_3}->Add($self->{button_3}, 0, wxEXPAND, 0);
     
-    $self->{sizer_3}->Add(0, 0, 0, 0, 0);
+    $self->{button_2} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Load Test");
+    $self->{sizer_3}->Add($self->{button_2}, 0, wxEXPAND, 0);
     
-    $self->{tree_ctrl_1} = Wx::TreeCtrl->new($self->{notebook_1_pane_1}, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_SUNKEN|wxTR_HAS_BUTTONS|wxTR_NO_BUTTONS|wxTR_SINGLE);
+    $self->{button_5} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Explore Archive");
+    $self->{sizer_3}->Add($self->{button_5}, 0, wxEXPAND, 0);
+    
+    $self->{button_6} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Explore Archive");
+    $self->{sizer_3}->Add($self->{button_6}, 0, wxEXPAND, 0);
+    
+    $self->{tree_ctrl_1} = Wx::TreeCtrl->new($self->{notebook_1_pane_1}, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_SUNKEN|wxTR_HAS_BUTTONS|wxTR_SINGLE);
     $self->{tree_ctrl_1}->SetMinSize(Wx::Size->new(800, 496));
-    $self->{sizer_2}->Add($self->{tree_ctrl_1}, 1, wxEXPAND, 0);
-    
-    $self->{notebook_1_ASGSStormArchive} = Wx::Panel->new($self->{notebook_1}, wxID_ANY);
-    $self->{notebook_1}->AddPage($self->{notebook_1_ASGSStormArchive}, "ASGS Storm Archive");
+    $self->{sizer_2}->Add($self->{tree_ctrl_1}, 0, wxEXPAND, 0);
     
     $self->{notebook_1_pane_1}->SetSizer($self->{sizer_2});
     
@@ -113,10 +147,12 @@ sub new {
     
     $self->Layout();
     Wx::Event::EVT_MENU($self, wxID_ANY, $self->can('DoQuit'));
-    Wx::Event::EVT_BUTTON($self, $self->{button_1}->GetId, $self->can('update_JSON'));
     Wx::Event::EVT_BUTTON($self, $self->{button_4}->GetId, $self->can('resetURL'));
-    Wx::Event::EVT_BUTTON($self, $self->{button_2}->GetId, $self->can('get_test_NHC_JSON'));
+    Wx::Event::EVT_BUTTON($self, $self->{button_1}->GetId, $self->can('update_JSON'));
     Wx::Event::EVT_BUTTON($self, $self->{button_3}->GetId, $self->can('get_current_NHC_JSON'));
+    Wx::Event::EVT_BUTTON($self, $self->{button_2}->GetId, $self->can('get_test_NHC_JSON'));
+    Wx::Event::EVT_BUTTON($self, $self->{button_5}->GetId, $self->can('explore_archive'));
+    Wx::Event::EVT_BUTTON($self, $self->{button_6}->GetId, $self->can('explore_archive'));
     Wx::Event::EVT_TREE_ITEM_ACTIVATED($self, $self->{tree_ctrl_1}->GetId, $self->can('on_item_activated'));
 
     # end wxGlade
@@ -245,7 +281,7 @@ sub _JSON_to_tree {
   foreach my $storm (@{$data->{activeStorms}}) {
     # Add each storm as a branch under the root
 
-    my $storm_tree = $tree->AppendItem($root, "$storm->{name} ($storm->{id})");
+    my $storm_tree = $tree->AppendItem($root, "$storm->{id} $storm->{name} ($storm->{publicAdvisory}->{advNum})");
 
     # Iterate through all keys in the storm object
     foreach my $key (keys %$storm) {
@@ -295,6 +331,15 @@ sub resetURL {
     # end wxGlade
     $self->{text_ctrl_1}->SetValue("https://raw.githubusercontent.com/StormSurgeLive/storm-archive/refs/heads/master/2024/advisories/al162024/009.CurrentStorms.json");
     return $self->update_JSON(@_);
+}
+
+
+sub explore_archive {
+    my ($self, $event) = @_;
+    # wxGlade: MyFrame::explore_archive <event_handler>
+    warn "Event handler (explore_archive) not implemented";
+    $event->Skip;
+    # end wxGlade
 }
 
 # end of class MyFrame
