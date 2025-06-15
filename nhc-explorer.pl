@@ -75,7 +75,7 @@ sub new {
 
     $self = $self->SUPER::new( $parent, $id, $title, $pos, $size, $style, $name );
     $self->SetSize(Wx::Size->new(1008, 596));
-    $self->SetTitle("NHC Explorer - (C) ADCIRC Live - https://www.adcirc.live");
+    $self->SetTitle("NHC Explorer - By ADCIRC Live (C) - https://www.adcirc.live");
     
     
 
