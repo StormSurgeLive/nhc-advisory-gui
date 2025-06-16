@@ -42,11 +42,14 @@ use Util::H2O::More qw/ddd HTTPTiny2h2o/;
 #      the needed files
 #
 my $BASEURL = "https://api.github.com/repos/StormSurgeLive/storm-archive/contents";
-my $VALID_YEARS = [qw/2021 2022 2023 2024 2025/];
-
-my $archiveListing = Util::H2O::More::HTTPTiny2h2o(HTTP::Tiny->new->get("$BASEURL/2021"));
-
-#ddd $archiveListing;
+my $YEARS   = [qw/2022 2023 2024 2025/];
+my $archive_paths = {};
+foreach my $year (@$YEARS) {
+  my $archive = Util::H2O::More::HTTPTiny2h2o(HTTP::Tiny->new->get("$BASEURL/$year/advisories"));
+  foreach my $i (@{$archive->content}) {
+    push @{$archive_paths->{$year}}, $i->path;
+  }
+}
 
 # begin wxGlade: dependencies
 # end wxGlade
@@ -134,8 +137,7 @@ sub new {
     $self->{button_5} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Explore Archive");
     $self->{sizer_3}->Add($self->{button_5}, 0, wxEXPAND, 0);
     
-    $self->{button_6} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Explore Archive");
-    $self->{sizer_3}->Add($self->{button_6}, 0, wxEXPAND, 0);
+    $self->{sizer_3}->Add(0, 0, 0, 0, 0);
     
     $self->{tree_ctrl_1} = Wx::TreeCtrl->new($self->{notebook_1_pane_1}, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_SUNKEN|wxTR_HAS_BUTTONS|wxTR_SINGLE);
     $self->{tree_ctrl_1}->SetMinSize(Wx::Size->new(800, 496));
@@ -152,7 +154,6 @@ sub new {
     Wx::Event::EVT_BUTTON($self, $self->{button_3}->GetId, $self->can('get_current_NHC_JSON'));
     Wx::Event::EVT_BUTTON($self, $self->{button_2}->GetId, $self->can('get_test_NHC_JSON'));
     Wx::Event::EVT_BUTTON($self, $self->{button_5}->GetId, $self->can('explore_archive'));
-    Wx::Event::EVT_BUTTON($self, $self->{button_6}->GetId, $self->can('explore_archive'));
     Wx::Event::EVT_TREE_ITEM_ACTIVATED($self, $self->{tree_ctrl_1}->GetId, $self->can('on_item_activated'));
 
     # end wxGlade
@@ -162,27 +163,15 @@ sub new {
 
 sub _async_get_JSON {
   my ($self) = @_;
-  #my $worker = threads->create(
-  # sub {
-  # $self->{text_ctrl_1}->SetValue($self->{lastURL});
-     my $content = HTTP::Tiny->new->get($self->{lastURL});
-     local $@;
-     my $data = eval { JSON::PP::decode_json($content->{content}) } or undef;
-     if (not $data or $@) {
-       say "WARN: an error occurred processing JSON response.";
-       say $@ if $@;
-       return;
-     }
-     $self->_JSON_to_tree($data);
-  # }, $self);
-  #$worker->detach;
-  # treat as FIFO, clean up oldest first
-  #push @{$self->{worker_threads}}, $worker;
-  #while (scalar @{$self->{worker_threads}} > 5) {
-  #  say "purging old thread ...";
-  #  my $old_worker = shift @{$self->{worker_threads}};
-  #  $old_worker->join;
-  #}
+  my $content = HTTP::Tiny->new->get($self->{lastURL});
+  local $@;
+  my $data = eval { JSON::PP::decode_json($content->{content}) } or undef;
+  if (not $data or $@) {
+    say "WARN: an error occurred processing JSON response.";
+    say $@ if $@;
+    return;
+  }
+  $self->_JSON_to_tree($data);
   return;
 }
 
@@ -266,6 +255,33 @@ sub _copy_text_to_clipboard {
     return;
 }
 
+# converts paths for archives
+sub _array_to_tree {
+  my ($self, $data) = @_;
+
+  # reset tree
+  $self->{tree_ctrl_1}->DeleteAllItems;
+
+  # Get the tree control object
+  my $tree = $self->{tree_ctrl_1};
+
+  my $numPaths = scalar keys %$archive_paths;
+  my $root = $tree->AddRoot("Archive Years ($numPaths)");
+
+  foreach my $year (sort { $a <=> $b } keys %$archive_paths) {
+    my $count = @{$archive_paths->{$year}};
+    my $year_tree = $tree->AppendItem($root, "$year ($count)");
+    foreach my $path (@{$archive_paths->{$year}}) {
+      # Add each storm as a branch under the root
+      $tree->AppendItem($year_tree, "$path");
+    }
+  }
+
+  $tree->Expand($root);
+  return;
+}
+
+# converts info from the JSON to a tree
 sub _JSON_to_tree {
   my ($self, $data) = @_;
 
@@ -280,9 +296,7 @@ sub _JSON_to_tree {
   # Loop through each storm in the activeStorms array
   foreach my $storm (@{$data->{activeStorms}}) {
     # Add each storm as a branch under the root
-
     my $storm_tree = $tree->AppendItem($root, "$storm->{id} $storm->{name} ($storm->{publicAdvisory}->{advNum})");
-
     # Iterate through all keys in the storm object
     foreach my $key (keys %$storm) {
       my $value = $storm->{$key};
@@ -318,10 +332,6 @@ sub DoQuit {
     my ($self, $event) = @_;
     # wxGlade: MyFrame::DoQuit <event_handler>
     # end wxGlade
-    #say "purging old threads ...";
-    #while (my $worker = pop @{$self->{worker_threads}}) {
-    #  $worker->join();
-    #}
     $self->Close;
 }
 
@@ -337,9 +347,8 @@ sub resetURL {
 sub explore_archive {
     my ($self, $event) = @_;
     # wxGlade: MyFrame::explore_archive <event_handler>
-    warn "Event handler (explore_archive) not implemented";
-    $event->Skip;
     # end wxGlade
+    $self->_array_to_tree($event);
 }
 
 # end of class MyFrame
