@@ -15,42 +15,6 @@ use HTTP::Tiny;
 use PDL::NetCDF;
 use Util::H2O::More qw/ddd HTTPTiny2h2o/;
 
-# info for presenting the URLs for the current form of the storm archive
-# TODO:
-# Clicking "Explore Archive" should
-# for each year, build a collapsable hierachy of .json files to load,
-#
-# YEAR
-#   BASIN
-#     STORM
-#       ADVISORY
-#         JSON URL (double click will offer a 'fetch?' dialog, on "yes" will update
-#                    URL address bar and load the selected JSON
-#
-# Notes:
-#   1. going back to "Explore Archive" should preserve the state of the tree (prevent
-#      repeated drilling down)
-#
-#   2. the archive doesn't change that frequently, so cache the tree; offer a way to
-#      "refresh archive listing"
-#
-#   3. initially just support years 2021+, but once initial pass is done look at adding
-#      the other directories (as a "precaching)
-#
-#   4. other ideas to be open to: ability to generate input files (e.g., fort.22) or do
-#      things like visually modify the track, then run a Perl version of aswip to create
-#      the needed files
-#
-my $BASEURL = "https://api.github.com/repos/StormSurgeLive/storm-archive/contents";
-my $YEARS   = [qw/2022 2023 2024 2025/];
-my $archive_paths = {};
-foreach my $year (@$YEARS) {
-  my $archive = Util::H2O::More::HTTPTiny2h2o(HTTP::Tiny->new->get("$BASEURL/$year/advisories"));
-  foreach my $i (@{$archive->content}) {
-    push @{$archive_paths->{$year}}, $i->path;
-  }
-}
-
 # begin wxGlade: dependencies
 # end wxGlade
 
@@ -62,6 +26,20 @@ package MyFrame;
 use Wx qw[:everything];
 use base qw(Wx::Frame);
 use strict;
+
+my $archive_paths = {};
+sub _get_archive_paths {
+  my ($self, $force) = @_;
+  return if %$archive_paths and !$force; # cache unless forced
+  my $BASEURL = "https://api.github.com/repos/StormSurgeLive/storm-archive/contents";
+  my $YEARS   = [qw/2022 2023 2024 2025/];
+  foreach my $year (@$YEARS) {
+    my $archive = Util::H2O::More::HTTPTiny2h2o(HTTP::Tiny->new->get("$BASEURL/$year/advisories"));
+    foreach my $i (@{$archive->content}) {
+      push @{$archive_paths->{$year}}, $i->path;
+    }
+  }
+}
 
 sub new {
     my( $self, $parent, $id, $title, $pos, $size, $style, $name ) = @_;
@@ -220,13 +198,21 @@ sub on_item_activated {
     my $item = $event->GetItem();
 
     # Get the stored URL from item data
-    my $url = $tree->GetItemData($item);
+    my $value = $tree->GetItemData($item);
  
     # Open the URL (could use a web browser or simply print the URL for now)
-    if (defined $url) {
-      my $url_text = $url->GetData;
+    if (defined $value and $value->GetData =~ m/^http/) {
+      my $url_text = $value->GetData;
       $self->_copy_text_to_clipboard($url_text);
     }
+    else {
+      say $value->GetData; 
+      say "Now do something with the path - list all advisaries, make the JSON loadable ...";
+ # list JSON in order, exampde drop-down with them
+ # make JSON files clickable, fetch and expand as double-clicked
+ #  call JSON_to_tree here ... persist tree so that anything clicked would be retained
+    }
+    return;
 }
 
 sub _copy_text_to_clipboard {
@@ -273,7 +259,8 @@ sub _array_to_tree {
     my $year_tree = $tree->AppendItem($root, "$year ($count)");
     foreach my $path (@{$archive_paths->{$year}}) {
       # Add each storm as a branch under the root
-      $tree->AppendItem($year_tree, "$path");
+      my $item = $tree->AppendItem($year_tree, "$path");
+      $tree->SetItemData($item, Wx::TreeItemData->new($path)); ## store path for this itemid
     }
   }
 
@@ -348,6 +335,7 @@ sub explore_archive {
     my ($self, $event) = @_;
     # wxGlade: MyFrame::explore_archive <event_handler>
     # end wxGlade
+    $self->_get_archive_paths();
     $self->_array_to_tree($event);
 }
 
