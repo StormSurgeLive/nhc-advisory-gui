@@ -15,6 +15,8 @@ use HTTP::Tiny;
 use PDL::NetCDF;
 use Util::H2O::More qw/ddd HTTPTiny2h2o/;
 
+my $BASEURL = "https://api.github.com/repos/StormSurgeLive/storm-archive/contents";
+
 # begin wxGlade: dependencies
 # end wxGlade
 
@@ -31,7 +33,6 @@ my $archive_paths = {};
 sub _get_archive_paths {
   my ($self, $force) = @_;
   return if %$archive_paths and !$force; # cache unless forced
-  my $BASEURL = "https://api.github.com/repos/StormSurgeLive/storm-archive/contents";
   my $YEARS   = [qw/2022 2023 2024 2025/];
   foreach my $year (@$YEARS) {
     my $archive = Util::H2O::More::HTTPTiny2h2o(HTTP::Tiny->new->get("$BASEURL/$year/advisories"));
@@ -88,7 +89,7 @@ sub new {
     
     $self->{sizer_2} = Wx::FlexGridSizer->new(2, 2, 0, 0);
     
-    $self->{button_4} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Home");
+    $self->{button_4} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Default");
     $self->{sizer_2}->Add($self->{button_4}, 0, wxEXPAND, 0);
     
     $self->{sizer_4} = Wx::BoxSizer->new(wxHORIZONTAL);
@@ -115,7 +116,8 @@ sub new {
     $self->{button_5} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Explore Archive");
     $self->{sizer_3}->Add($self->{button_5}, 0, wxEXPAND, 0);
     
-    $self->{sizer_3}->Add(0, 0, 0, 0, 0);
+    $self->{button_6} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Exit");
+    $self->{sizer_3}->Add($self->{button_6}, 0, wxEXPAND, 0);
     
     $self->{tree_ctrl_1} = Wx::TreeCtrl->new($self->{notebook_1_pane_1}, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_SUNKEN|wxTR_HAS_BUTTONS|wxTR_SINGLE);
     $self->{tree_ctrl_1}->SetMinSize(Wx::Size->new(800, 496));
@@ -132,6 +134,7 @@ sub new {
     Wx::Event::EVT_BUTTON($self, $self->{button_3}->GetId, $self->can('get_current_NHC_JSON'));
     Wx::Event::EVT_BUTTON($self, $self->{button_2}->GetId, $self->can('get_test_NHC_JSON'));
     Wx::Event::EVT_BUTTON($self, $self->{button_5}->GetId, $self->can('explore_archive'));
+    Wx::Event::EVT_BUTTON($self, $self->{button_6}->GetId, $self->can('DoQuit'));
     Wx::Event::EVT_TREE_ITEM_ACTIVATED($self, $self->{tree_ctrl_1}->GetId, $self->can('on_item_activated'));
 
     # end wxGlade
@@ -206,11 +209,15 @@ sub on_item_activated {
       $self->_copy_text_to_clipboard($url_text);
     }
     else {
-      say $value->GetData; 
-      say "Now do something with the path - list all advisaries, make the JSON loadable ...";
- # list JSON in order, exampde drop-down with them
- # make JSON files clickable, fetch and expand as double-clicked
- #  call JSON_to_tree here ... persist tree so that anything clicked would be retained
+      my $path = $value->GetData; 
+      my $files = Util::H2O::More::HTTPTiny2h2o(HTTP::Tiny->new->get("$BASEURL/$path"));
+      my @file_urls = ();
+      foreach my $file ($files->content->all) {
+        my $download_url = $file->download_url;
+        push @file_urls, $download_url; # if $download_url =~ m/json$/; 
+      }
+      # show as a tree of files now to be double clicked
+      $self->_append_to_tree($tree, $item, \@file_urls);
     }
     return;
 }
@@ -239,6 +246,16 @@ sub _copy_text_to_clipboard {
         Wx::MessageBox("Failed to open clipboard!", "Error", wxOK | wxICON_ERROR, $self);
     }
     return;
+}
+
+sub _append_to_tree {
+  my ($self, $tree, $item, $file_urls) = @_;
+  foreach my $path (@$file_urls) {
+    my $new_item = $tree->AppendItem($item, "$path");
+    $tree->SetItemData($new_item, Wx::TreeItemData->new($path)); ## store path for this itemid
+  }
+  $tree->Expand($item);
+  return;
 }
 
 # converts paths for archives
