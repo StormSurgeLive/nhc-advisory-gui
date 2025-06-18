@@ -30,17 +30,6 @@ use base qw(Wx::Frame);
 use strict;
 
 my $archive_paths = {};
-sub _get_archive_paths {
-  my ($self, $force) = @_;
-  return if %$archive_paths and !$force; # cache unless forced
-  my $YEARS   = [qw/2022 2023 2024 2025/];
-  foreach my $year (@$YEARS) {
-    my $archive = Util::H2O::More::HTTPTiny2h2o(HTTP::Tiny->new->get("$BASEURL/$year/advisories"));
-    foreach my $i (@{$archive->content}) {
-      push @{$archive_paths->{$year}}, $i->path;
-    }
-  }
-}
 
 sub new {
     my( $self, $parent, $id, $title, $pos, $size, $style, $name ) = @_;
@@ -66,11 +55,10 @@ sub new {
     $self->{frame_menubar} = Wx::MenuBar->new();
     my $wxglade_tmp_menu;
     $wxglade_tmp_menu = Wx::Menu->new();
-    $wxglade_tmp_menu->Append(wxID_ANY, "Exit", "");
+    $self->{Exit} = $wxglade_tmp_menu->Append(wxID_ANY, "Exit", "");
     $self->{frame_menubar}->Append($wxglade_tmp_menu, "File");
     $wxglade_tmp_menu = Wx::Menu->new();
-    $self->{frame_menubar}->Append($wxglade_tmp_menu, "Edit");
-    $wxglade_tmp_menu = Wx::Menu->new();
+    $self->{Aboutt} = $wxglade_tmp_menu->Append(wxID_ANY, "About", "");
     $self->{frame_menubar}->Append($wxglade_tmp_menu, "Help");
     $self->SetMenuBar($self->{frame_menubar});
     
@@ -89,8 +77,7 @@ sub new {
     
     $self->{sizer_2} = Wx::FlexGridSizer->new(2, 2, 0, 0);
     
-    $self->{button_4} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Default");
-    $self->{sizer_2}->Add($self->{button_4}, 0, wxEXPAND, 0);
+    $self->{sizer_2}->Add(0, 0, 0, 0, 0);
     
     $self->{sizer_4} = Wx::BoxSizer->new(wxHORIZONTAL);
     $self->{sizer_2}->Add($self->{sizer_4}, 1, wxEXPAND, 0);
@@ -108,13 +95,16 @@ sub new {
     $self->{sizer_2}->Add($self->{sizer_3}, 1, wxEXPAND, 0);
     
     $self->{button_3} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Load Active");
+    $self->{button_3}->SetToolTip("Load any active storms per the NHC.");
     $self->{sizer_3}->Add($self->{button_3}, 0, wxEXPAND, 0);
     
-    $self->{button_2} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Load Test");
-    $self->{sizer_3}->Add($self->{button_2}, 0, wxEXPAND, 0);
-    
     $self->{button_5} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Explore Archive");
+    $self->{button_5}->SetToolTip("Browse and load past storms and advisories.");
     $self->{sizer_3}->Add($self->{button_5}, 0, wxEXPAND, 0);
+    
+    $self->{button_2} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "NHC Sample");
+    $self->{button_2}->SetToolTip("Loads NHC's sample JSON product, available during non-active periods.");
+    $self->{sizer_3}->Add($self->{button_2}, 0, wxEXPAND, 0);
     
     $self->{button_6} = Wx::Button->new($self->{notebook_1_pane_1}, wxID_ANY, "Exit");
     $self->{sizer_3}->Add($self->{button_6}, 0, wxEXPAND, 0);
@@ -128,12 +118,12 @@ sub new {
     $self->{panel_1}->SetSizer($self->{sizer_1});
     
     $self->Layout();
-    Wx::Event::EVT_MENU($self, wxID_ANY, $self->can('DoQuit'));
-    Wx::Event::EVT_BUTTON($self, $self->{button_4}->GetId, $self->can('resetURL'));
+    Wx::Event::EVT_MENU($self, $self->{Exit}->GetId, $self->can('DoQuit'));
+    Wx::Event::EVT_MENU($self, $self->{Aboutt}->GetId, $self->can('show_license_dialog'));
     Wx::Event::EVT_BUTTON($self, $self->{button_1}->GetId, $self->can('update_JSON'));
     Wx::Event::EVT_BUTTON($self, $self->{button_3}->GetId, $self->can('get_current_NHC_JSON'));
-    Wx::Event::EVT_BUTTON($self, $self->{button_2}->GetId, $self->can('get_test_NHC_JSON'));
     Wx::Event::EVT_BUTTON($self, $self->{button_5}->GetId, $self->can('explore_archive'));
+    Wx::Event::EVT_BUTTON($self, $self->{button_2}->GetId, $self->can('get_test_NHC_JSON'));
     Wx::Event::EVT_BUTTON($self, $self->{button_6}->GetId, $self->can('DoQuit'));
     Wx::Event::EVT_TREE_ITEM_ACTIVATED($self, $self->{tree_ctrl_1}->GetId, $self->can('on_item_activated'));
 
@@ -144,6 +134,9 @@ sub new {
 
 sub _async_get_JSON {
   my ($self) = @_;
+  my $dialog = Wx::Dialog->new($self, -1, "Please Wait ...", wxDefaultPosition, [200, 50]);
+  $dialog->CenterOnParent;
+  $dialog->Show;
   my $content = HTTP::Tiny->new->get($self->{lastURL});
   local $@;
   my $data = eval { JSON::PP::decode_json($content->{content}) } or undef;
@@ -153,6 +146,7 @@ sub _async_get_JSON {
     return;
   }
   $self->_JSON_to_tree($data);
+  $dialog->Destroy;
   return;
 }
 
@@ -207,9 +201,16 @@ sub on_item_activated {
     if (defined $value and $value->GetData =~ m/^http/) {
       my $url_text = $value->GetData;
       $self->_copy_text_to_clipboard($url_text);
+      # if .json, add to address field
+      if ($url_text =~ m/json$/) {
+        $self->{text_ctrl_1}->SetValue($url_text);
+      }
     }
     else {
       my $path = $value->GetData; 
+      my $dialog = Wx::Dialog->new($self, -1, "Please Wait ...", wxDefaultPosition, [200, 50]);
+      $dialog->CenterOnParent;
+      $dialog->Show;
       my $files = Util::H2O::More::HTTPTiny2h2o(HTTP::Tiny->new->get("$BASEURL/$path"));
       my @file_urls = ();
       foreach my $file ($files->content->all) {
@@ -218,6 +219,7 @@ sub on_item_activated {
       }
       # show as a tree of files now to be double clicked
       $self->_append_to_tree($tree, $item, \@file_urls);
+      $dialog->Destroy;
     }
     return;
 }
@@ -238,8 +240,7 @@ sub _copy_text_to_clipboard {
         # Close the wxTheClipboard
         wxTheClipboard->Close;
 
-	say "Copied '$text_to_copy' to clipboard.";
-        # Optionally, show a message box confirming the action
+        # Show a message box confirming the action
         Wx::MessageBox("URL copied to clipboard!", "Success", wxOK | wxICON_INFORMATION, $self);
     }
     else {
@@ -262,11 +263,11 @@ sub _append_to_tree {
 sub _array_to_tree {
   my ($self, $data) = @_;
 
-  # reset tree
-  $self->{tree_ctrl_1}->DeleteAllItems;
-
   # Get the tree control object
   my $tree = $self->{tree_ctrl_1};
+
+  # reset tree
+  $tree->DeleteAllItems;
 
   my $numPaths = scalar keys %$archive_paths;
   my $root = $tree->AddRoot("Archive Years ($numPaths)");
@@ -283,6 +284,32 @@ sub _array_to_tree {
 
   $tree->Expand($root);
   return;
+}
+
+sub _get_archive_paths {
+  my ($self, $force) = @_;
+  return if %$archive_paths and !$force; # cache unless forced
+  my $YEARS   = [qw/2022 2023 2024 2025/];
+  foreach my $year (@$YEARS) {
+    my $archive = Util::H2O::More::HTTPTiny2h2o(HTTP::Tiny->new->get("$BASEURL/$year/advisories"));
+    foreach my $i (@{$archive->content}) {
+      push @{$archive_paths->{$year}}, $i->path;
+    }
+  }
+  return;
+}
+
+sub explore_archive {
+    my ($self, $event) = @_;
+    # wxGlade: MyFrame::explore_archive <event_handler>
+    # end wxGlade
+    my $dialog = Wx::Dialog->new($self, -1, "Please Wait ...", wxDefaultPosition, [200, 50]);
+    $dialog->CenterOnParent;
+    $dialog->Show;
+    $self->_get_archive_paths();
+    $self->_array_to_tree($event);
+    $dialog->Destroy;
+    return;
 }
 
 # converts info from the JSON to a tree
@@ -326,9 +353,7 @@ sub _JSON_to_tree {
       }
     }
   }
-
   $tree->Expand($root);
-
   return;
 }
 
@@ -348,12 +373,66 @@ sub resetURL {
 }
 
 
-sub explore_archive {
+sub show_license_dialog {
     my ($self, $event) = @_;
-    # wxGlade: MyFrame::explore_archive <event_handler>
+    # wxGlade: MyFrame::show_license_dialog <event_handler>
     # end wxGlade
-    $self->_get_archive_paths();
-    $self->_array_to_tree($event);
+    my $dialog = Wx::Dialog->new($self, -1, "License and Credits",
+        wxDefaultPosition, [640, 500], wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER);
+
+    my $text = <<'END_LICENSE';
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+Credits:
+  - Developed by:  Brett Estrade <brett.estrade@adcirc.live>
+  - In Association with: ADCIRC Live (c), Seahorse Coasting Consulting,
+    and Coastal Computing Services, LLC.
+  - License: GNU GPL v3
+
+Click the GitHub link below to view the project repository.
+END_LICENSE
+
+    my $panel = Wx::Panel->new($dialog, -1);
+    my $sizer = Wx::BoxSizer->new(wxVERTICAL);
+
+    my $textctrl = Wx::TextCtrl->new($panel, -1, $text,
+        wxDefaultPosition, wxDefaultSize,
+        wxTE_MULTILINE | wxTE_READONLY | wxTE_RICH | wxHSCROLL);
+
+    $textctrl->SetFont(Wx::Font->new(10, wxFONTFAMILY_MODERN, wxNORMAL, wxNORMAL));
+
+    # Hyperlink controls
+    my $github_link   = Wx::HyperlinkCtrl->new($panel, -1, "https://github.com/StormSurgeLive/nhc-advisory-gui", "https://github.com/StormSurgeLive/nhc-advisory-gui");
+    my $seahorse_link = Wx::HyperlinkCtrl->new($panel, -1, "https://seahorsecoastal.com",            "https://seahorsecoastal.com");
+    my $coastal_link  = Wx::HyperlinkCtrl->new($panel, -1, "https://coastalcomputingservices.net",   "https://coastalcomputingservices.net");
+    my $adcirc_link   = Wx::HyperlinkCtrl->new($panel, -1, "https://adcirc.live",                    "https://adcirc.live");
+
+    my $btns = Wx::StdDialogButtonSizer->new;
+    my $ok = Wx::Button->new($panel, wxID_OK);
+    $btns->AddButton($ok);
+    $btns->Realize;
+
+    $sizer->Add($textctrl, 1, wxALL | wxEXPAND, 10);
+    my $link_indent = 20;
+    $sizer->Add($github_link,   0, wxLEFT | wxTOP | wxALIGN_LEFT, $link_indent);
+    $sizer->Add($adcirc_link,   0, wxLEFT | wxTOP | wxALIGN_LEFT, $link_indent);
+    $sizer->Add($seahorse_link, 0, wxLEFT | wxTOP | wxALIGN_LEFT, $link_indent);
+    $sizer->Add($coastal_link,  0, wxLEFT | wxTOP | wxBOTTOM | wxALIGN_LEFT, $link_indent);
+    $sizer->Add($btns,          0, wxALL  | wxALIGN_CENTER, 10);
+
+    $panel->SetSizer($sizer);
+    $dialog->CentreOnParent;
+    $dialog->ShowModal;
+    $dialog->Destroy;
+    return;
 }
 
 # end of class MyFrame
