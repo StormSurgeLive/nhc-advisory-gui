@@ -1,4 +1,4 @@
-First "beta' release of the NHC Explorer, built around the National Hurricane Center's JSON product that lists active storms and for the Eastern and Central Pacific, and the Atlantic basins. Initial release allows explorations of JSON archives going back to 2022-2025 (actively recording). Feature requests and but reports welcome. Release is for Windows only.
+First "beta' release of the NHC Explorer, built around the National Hurricane Center's JSON product that lists active storms and for the Eastern and Central Pacific, and the Atlantic basins. Initial release allows explorations of JSON archives going back to 2022-2025 (actively recording). Feature requests and bug reports welcome. Release is for Windows only.
 
 Features:
 
