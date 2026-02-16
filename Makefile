@@ -1,8 +1,19 @@
 CBIN := "c:\sw\pdl\c\bin/"
 
-all:
+clean:
+	@if exist dist\* del /Q /F dist\* 2>NUL
+	@if exist release\* del /Q /F release\* 2>NUL
+
+all: exe debug setup
+
+exe:
 	wxpar --verbose -o ./dist/nhc-explorer.exe --link $(CBIN)libhdf5_hl-0__.dll --link $(CBIN)zlib1__.dll --link $(CBIN)libhdf5-0__.dll --link $(CBIN)libjpeg-9__.dll --link $(CBIN)libmfhdf__.dll --link $(CBIN)libnetcdf-19__.dll --link $(CBIN)libiconv-2__.dll --link $(CBIN)libhdf__.dll --link $(CBIN)libxml2-2__.dll --link $(CBIN)libsz-2__.dll --link $(CBIN)libcrypto-3-x64__.dll --link $(CBIN)libssl-3-x64__.dll ./nhc-explorer.pl --gui
+
+debug:
 	wxpar --verbose -o ./dist/DEBUG-nhc-explorer.exe --link $(CBIN)libhdf5_hl-0__.dll --link $(CBIN)zlib1__.dll --link $(CBIN)libhdf5-0__.dll --link $(CBIN)libjpeg-9__.dll --link $(CBIN)libmfhdf__.dll --link $(CBIN)libnetcdf-19__.dll --link $(CBIN)libiconv-2__.dll --link $(CBIN)libhdf__.dll --link $(CBIN)libxml2-2__.dll --link $(CBIN)libsz-2__.dll --link $(CBIN)libcrypto-3-x64__.dll --link $(CBIN)libssl-3-x64__.dll ./nhc-explorer.pl
+
+setup:
+	C:\Users\user\AppData\Local\Programs\Inno Setup 6\ISCC.exe installer/nhc-explorer.iss
 
 
 # Note: good example of a the command required to package an EXE for Windows
