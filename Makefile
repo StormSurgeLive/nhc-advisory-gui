@@ -1,36 +1,22 @@
-CBIN := "c:\sw\pdl\c\bin/"
+# -- BEGIN MAKEFILE --
+
+CBIN    := "C:\sw\pdl\c\bin"
+DIST    := dist
+RELEASE := release
+EXE     := C:\Users\user\Documents\wxPerl\nhc-advisory-gui\dist\nhc-explorer.exe
 
 clean:
-	@if exist dist\* del /Q /F dist\* 2>NUL
-	@if exist release\* del /Q /F release\* 2>NUL
+	@if exist $(DIST)* del /Q /F $(DIST)* 2>NUL
+	@if exist $(RELEASE)* del /Q /F $(RELEASE)* 2>NUL
 
-all: exe debug setup
+all: exe
 
-exe:
-	wxpar --verbose -o ./dist/nhc-explorer.exe --link $(CBIN)libhdf5_hl-0__.dll --link $(CBIN)zlib1__.dll --link $(CBIN)libhdf5-0__.dll --link $(CBIN)libjpeg-9__.dll --link $(CBIN)libmfhdf__.dll --link $(CBIN)libnetcdf-19__.dll --link $(CBIN)libiconv-2__.dll --link $(CBIN)libhdf__.dll --link $(CBIN)libxml2-2__.dll --link $(CBIN)libsz-2__.dll --link $(CBIN)libcrypto-3-x64__.dll --link $(CBIN)libssl-3-x64__.dll ./nhc-explorer.pl --gui
+exe: prepdirs
+	wxpar -o $(EXE) --link $(CBIN)/libhdf5_hl-0__.dll  --link $(CBIN)/libsz-2__.dll  --link $(CBIN)/libiconv-2__.dll  --link $(CBIN)/libxml2-2__.dll  --link $(CBIN)/libcrypto-3-x64__.dll  --link $(CBIN)/libnetcdf-19__.dll  --link $(CBIN)/liblzma-5__.dll  --link $(CBIN)/libhdf5-0__.dll  --link $(CBIN)/libmfhdf__.dll  --link $(CBIN)/zlib1__.dll  --link $(CBIN)/libjpeg-9__.dll  --link $(CBIN)/libhdf__.dll  --link $(CBIN)/libssl-3-x64__.dll  C:/Users/user/Documents/wxPerl/nhc-advisory-gui/nhc-explorer.pl --gui
+	@move /Y $(EXE) $(DIST)
 
-debug:
-	wxpar --verbose -o ./dist/DEBUG-nhc-explorer.exe --link $(CBIN)libhdf5_hl-0__.dll --link $(CBIN)zlib1__.dll --link $(CBIN)libhdf5-0__.dll --link $(CBIN)libjpeg-9__.dll --link $(CBIN)libmfhdf__.dll --link $(CBIN)libnetcdf-19__.dll --link $(CBIN)libiconv-2__.dll --link $(CBIN)libhdf__.dll --link $(CBIN)libxml2-2__.dll --link $(CBIN)libsz-2__.dll --link $(CBIN)libcrypto-3-x64__.dll --link $(CBIN)libssl-3-x64__.dll ./nhc-explorer.pl
+prepdirs:
+	@if not exist $(DIST) mkdir $(DIST)
+	@if not exist $(RELEASE) mkdir $(RELEASE)
+# -- END MAKEFILE --
 
-setup:
-	C:\Users\user\AppData\Local\Programs\Inno Setup 6\ISCC.exe installer/nhc-explorer.iss
-
-
-# Note: good example of a the command required to package an EXE for Windows
-# when using HTTP::Tiny and https addresses
-
-# It was an adventure finding all the dependencies related to the wxpar command,
-# particularly those around what was needed, the basic process entailed:
-# 1. use wxpar, which generates an options files with all the Wx DLLs 
-# 2. installed, App::PP::Autolink,App::PP::Autolink which provides the utility "pp_autolink"; this
-#    utility scans the .pl file you're packing (in this case, "nhc-explorer.pl,")
-#    for DLLs - lo' and behold, it found the ones I needed; in particular the critical
-#    one that was not getting picked up by pp or wxpar, "libcrypto-3-x64___.dll!" 
-# 3. ran the "wxpar" command above
-# 4. tested in a non-Strawberry Perl window (MSYS2 terminal) using the command,
-#
-#    PERL_DL_DEBUG=5 dist/nhc-explorer.exe
-#
-# I learned about this command while searching, here:
-#
-#   https://stackoverflow.com/questions/423330/why-cant-dynaloader-pm-load-ssleay-dll-for-netssleay-and-cryptssleay  #(per, "rurban")
